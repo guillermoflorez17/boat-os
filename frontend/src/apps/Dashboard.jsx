@@ -1,7 +1,4 @@
-import { useBoatData } from "../hooks/useBoatData"
-
-function Dashboard() {
-  const { data, loading, error } = useBoatData()
+function Dashboard({ data, loading, error }) {
 
   if (loading) {
     return <p>Cargando datos del barco...</p>
@@ -14,7 +11,26 @@ function Dashboard() {
   return (
     <div>
       <h2>Dashboard</h2>
+        {data.alerts?.length > 0 && (
+          <div style={styles.alertPanel}>
+            <strong>Alertas activas</strong>
 
+            {data.alerts.map((alert) => (
+              <div
+                key={alert.id}
+                style={{
+                  ...styles.alertItem,
+                  borderLeft: `5px solid ${
+                    alert.level === "critical" ? "#ff4d4d" : "#ffb300"
+                  }`
+                }}
+              >
+                <strong>{alert.title}</strong>
+                <p>{alert.message}</p>
+              </div>
+            ))}
+          </div>
+        )}
       <div style={styles.grid}>
         <div style={styles.card}>
           <strong>Batería</strong>
@@ -34,18 +50,18 @@ function Dashboard() {
           <p>{data.gps.latitude}, {data.gps.longitude}</p>
         </div>
 
-          <div style={{
+        <div style={{
           ...styles.card,
-          border: data.ais.nearby?.some(boat => boat.risk === "Alto")
-            ? "2px solid #ff4d4d"
+          border: data.alerts?.some(alert => alert.source === "ais")
+            ? "2px solid #ffb300"
             : "none"
         }}>
           <strong>AIS</strong>
           <p>{data.ais.status}</p>
           <p>{data.ais.targets} barcos</p>
 
-          {data.ais.nearby?.some(boat => boat.risk === "Alto") && (
-            <p style={styles.alert}>⚠️ Riesgo AIS alto</p>
+          {data.alerts?.some(alert => alert.source === "ais") && (
+            <p style={styles.alert}>⚠️ Alerta AIS activa</p>
           )}
         </div>
 
@@ -80,7 +96,21 @@ const styles = {
   alert: {
     color: "#ff4d4d",
     fontWeight: "bold"
-  }
+  },
+    alertPanel: {
+    backgroundColor: "#07131d",
+    border: "1px solid #1f455f",
+    borderRadius: "14px",
+    padding: "18px",
+    marginBottom: "20px",
+    textAlign: "left"
+  },
+  alertItem: {
+    backgroundColor: "#0b1d2a",
+    borderRadius: "10px",
+    padding: "12px",
+    marginTop: "12px"
+  },
 }
 
 export default Dashboard

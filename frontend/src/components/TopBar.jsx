@@ -1,14 +1,22 @@
 import { useEffect, useRef } from "react"
-import { useBoatData } from "../hooks/useBoatData"
 
-function TopBar() {
-  const { data, loading, error } = useBoatData()
+function TopBar({ data, loading, error }) {
   const alarmPlayed = useRef(false)
 
-  const hasHighAisRisk = data?.ais?.nearby?.some((boat) => boat.risk === "Alto")
+  const alerts = data?.alerts ?? []
+  const criticalAlerts = alerts.filter((alert) => alert.level === "critical")
+  const warningAlerts = alerts.filter((alert) => alert.level === "warning")
+
+  const hasCriticalAlert = criticalAlerts.length > 0
+  const hasWarningAlert = warningAlerts.length > 0
+  const mainAlert = criticalAlerts[0] ?? warningAlerts[0]
+
+  const lastUpdate = data?.meta?.timestamp
+    ? new Date(data.meta.timestamp).toLocaleTimeString()
+    : "-"
 
   useEffect(() => {
-    if (hasHighAisRisk && !alarmPlayed.current) {
+    if (hasCriticalAlert && !alarmPlayed.current) {
       const audio = new Audio("/alarm.mp3")
       audio.play().catch(() => {
         console.log("El navegador bloqueó el audio automático")
@@ -16,10 +24,10 @@ function TopBar() {
       alarmPlayed.current = true
     }
 
-    if (!hasHighAisRisk) {
+    if (!hasCriticalAlert) {
       alarmPlayed.current = false
     }
-  }, [hasHighAisRisk])
+  }, [hasCriticalAlert])
 
   if (loading) {
     return (
@@ -49,17 +57,35 @@ function TopBar() {
           <span>☀️ {data.solar.power} W</span>
           <span>📍 GPS {data.gps.status}</span>
 
-          <span style={hasHighAisRisk ? styles.danger : undefined}>
-            📡 AIS {hasHighAisRisk ? "RIESGO" : data.ais.status}
+          <span
+            style={
+              hasCriticalAlert
+                ? styles.danger
+                : hasWarningAlert
+                  ? styles.warning
+                  : undefined
+            }
+          >
+            ⚠️ {alerts.length} alertas
           </span>
 
+          <span>📡 AIS {data.ais.status}</span>
           <span>📶 {data.connection.type}</span>
+          <span>🧪 {data.meta?.dataSource}</span>
+          <span>⏱️ {lastUpdate}</span>
         </div>
       </div>
 
-      {hasHighAisRisk && (
-        <div style={styles.alertBox}>
-          ⚠️ ALERTA AIS: barco con riesgo alto
+      {mainAlert && (
+        <div
+          style={{
+            ...styles.alertBox,
+            backgroundColor:
+              mainAlert.level === "critical" ? "#8b0000" : "#8a5a00",
+          }}
+        >
+          <strong>{mainAlert.title}</strong>
+          <span>{mainAlert.message}</span>
         </div>
       )}
     </>
@@ -91,7 +117,8 @@ const styles = {
   status: {
     display: "flex",
     gap: "18px",
-    fontSize: "14px"
+    fontSize: "14px",
+    alignItems: "center"
   },
   error: {
     color: "#ff6b6b"
@@ -100,17 +127,23 @@ const styles = {
     color: "#ff4d4d",
     fontWeight: "bold"
   },
+  warning: {
+    color: "#ffb300",
+    fontWeight: "bold"
+  },
   alertBox: {
     position: "fixed",
     top: "70px",
     right: "20px",
-    backgroundColor: "#8b0000",
     color: "white",
     padding: "14px 20px",
     borderRadius: "12px",
     fontWeight: "bold",
     zIndex: 1002,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.4)"
+    boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px"
   }
 }
 

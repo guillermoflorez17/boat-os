@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useBoatData } from "./hooks/useBoatData"
 import AIS from "./apps/AIS"
 import Energy from "./apps/Energy"
 import Plotter from "./apps/Plotter"
@@ -7,25 +8,27 @@ import System from "./apps/System"
 import Settings from "./apps/Settings"
 import Dashboard from "./apps/Dashboard"
 import TopBar from "./components/TopBar"
+import Alerts from "./apps/Alerts"
 
 function App() {
   const [currentApp, setCurrentApp] = useState("Dashboard")
+  const { data, loading, error } = useBoatData()
 
   const apps = {
-    Dashboard: <Dashboard />,
+    Dashboard: <Dashboard data={data} loading={loading} error={error} />,
     Plotter: <Plotter />,
-    AIS: <AIS />,
-    Energía: <Energy />,
+    AIS: <AIS data={data} loading={loading} error={error} />,
+    Energía: <Energy data={data} loading={loading} error={error} />,
     Piloto: <Pilot />,
-    Sistema: <System />,
+    Sistema: <System data={data} loading={loading} error={error} />,
+    Alertas: <Alerts data={data} loading={loading} error={error} />,
     Ajustes: <Settings />
   }
 
   if (currentApp !== "desktop") {
     return (
       <div style={styles.container}>
-        <TopBar />
-
+      <TopBar data={data} loading={loading} error={error} />
         {currentApp !== "Dashboard" && (
           <button style={styles.backButton} onClick={() => setCurrentApp("Dashboard")}>
             ← Volver
@@ -49,7 +52,7 @@ function App() {
 
   return (
     <div style={styles.container}>
-      <TopBar />
+      <TopBar data={data} loading={loading} error={error} />
 
       <h1 style={styles.title}>Aplicaciones</h1>
       <p style={styles.subtitle}>Selecciona una sección del barco</p>
@@ -71,6 +74,7 @@ function App() {
           <button style={styles.card} onClick={() => setCurrentApp("Dashboard")}>Dashboard</button>
           <button style={styles.card} onClick={() => setCurrentApp("Energía")}>Energía</button>
           <button style={styles.card} onClick={() => setCurrentApp("Sistema")}>Sistema</button>
+          <button style={styles.card} onClick={() => setCurrentApp("Alertas")}>Alertas</button>
           <button style={styles.card} onClick={() => setCurrentApp("Ajustes")}>Ajustes</button>
         </div>
       </div>

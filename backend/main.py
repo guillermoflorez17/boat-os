@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from services.config_service import build_config
+from services.health_service import build_health
+from services.preferences_service import get_preferences, update_preferences
+from services.status_service import build_status
+
+
+app = FastAPI(title="Boat OS Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,36 +28,26 @@ def root():
     }
 
 
+@app.get("/health")
+def health():
+    return build_health()
+
+
+@app.get("/config")
+def config():
+    return build_config()
+
+
+@app.get("/preferences")
+def preferences():
+    return get_preferences()
+
+
+@app.put("/preferences")
+def preferences_update(preferences: dict):
+    return update_preferences(preferences)
+
+
 @app.get("/status")
 def status():
-    return {
-        "battery": {
-            "voltage": 12.7,
-            "percentage": 84,
-            "status": "OK"
-        },
-        "solar": {
-            "power": 132,
-            "dailyYield": 0.8,
-            "status": "Cargando"
-        },
-        "gps": {
-            "status": "OK",
-            "latitude": 37.2614,
-            "longitude": -6.9447,
-            "speed": 0.0
-        },
-        "ais": {
-            "status": "Sin datos reales",
-            "targets": 0
-        },
-        "connection": {
-            "type": "4G",
-            "status": "OK"
-        },
-        "raspberry": {
-            "temperature": 41,
-            "cpu": 18,
-            "ram": 42
-        }
-    }
+    return build_status()

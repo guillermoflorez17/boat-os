@@ -1,7 +1,4 @@
-import { useBoatData } from "../hooks/useBoatData"
-
-function Energy() {
-  const { data, loading, error } = useBoatData()
+function Energy({ data, loading, error }) {
 
   if (loading) return <p>Cargando energía...</p>
   if (error) return <p>Error cargando energía</p>
