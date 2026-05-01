@@ -1,0 +1,7 @@
+Correr frontend:
+	- npm run dev
+
+Correr backend:c  
+
+	-venv\Scripts\activate  ACTIVAR ENTORNO
+	- uvicorn main:app --reload CORRER SERVIDOR
