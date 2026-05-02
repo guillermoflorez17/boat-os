@@ -1,5 +1,4 @@
 from config import BOAT_OS_DATA_SOURCE
-
 from services.boat_simulator import (
     get_connection_status,
     get_ownship,
@@ -7,7 +6,6 @@ from services.boat_simulator import (
     get_raspberry_status,
     get_raw_ais_targets,
 )
-
 from services.signal_k_client import (
     get_connection_status_from_signal_k,
     get_ownship_from_signal_k,
@@ -15,7 +13,7 @@ from services.signal_k_client import (
     get_raspberry_status_from_signal_k,
     get_raw_ais_targets_from_signal_k,
 )
-
+from services.system_monitor import get_system_status
 
 def get_data_source():
     return BOAT_OS_DATA_SOURCE
@@ -58,6 +56,11 @@ def get_boat_connection_status():
 
 
 def get_boat_raspberry_status():
+    system_status = get_system_status()
+
+    if system_status:
+        return system_status
+
     if BOAT_OS_DATA_SOURCE == "signalk":
         data = get_raspberry_status_from_signal_k()
         if data:

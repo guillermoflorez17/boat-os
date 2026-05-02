@@ -5,6 +5,7 @@ from services.config_service import build_config
 from services.health_service import build_health
 from services.preferences_service import get_preferences, update_preferences
 from services.status_service import build_status
+from services.opencpn_service import get_opencpn_status, launch_opencpn
 
 
 app = FastAPI(title="Boat OS Backend")
@@ -47,6 +48,14 @@ def preferences():
 def preferences_update(preferences: dict):
     return update_preferences(preferences)
 
+@app.get("/opencpn/status")
+def opencpn_status():
+    return get_opencpn_status()
+
+
+@app.post("/opencpn/launch")
+def opencpn_launch():
+    return launch_opencpn()
 
 @app.get("/status")
 def status():

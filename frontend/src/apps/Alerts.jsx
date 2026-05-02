@@ -1,7 +1,9 @@
-function getAlertColor(level) {
-  if (level === "critical") return "#ff4d4d"
-  if (level === "warning") return "#ffb300"
-  return "#4caf50"
+import { InfoCard, SectionHeader, StatusBadge } from "../components/ui"
+
+function getAlertColor(level, theme) {
+  if (level === "critical") return theme.danger
+  if (level === "warning") return theme.warning
+  return theme.success
 }
 
 function getAlertLabel(level) {
@@ -10,31 +12,30 @@ function getAlertLabel(level) {
   return "INFO"
 }
 
-function Alerts({ data, loading, error }) {
-  if (loading) return <p>Cargando alertas...</p>
-  if (error) return <p>Error cargando alertas</p>
+function Alerts({ data, loading, error, theme, tabletMode }) {
+  if (loading) return <p style={{ color: theme.text }}>Cargando alertas...</p>
+  if (error) return <p style={{ color: theme.danger }}>Error cargando alertas</p>
+
+  const styles = getStyles(theme, tabletMode)
 
   const alerts = data?.alerts ?? []
+  const criticalCount = alerts.filter((alert) => alert.level === "critical").length
+  const warningCount = alerts.filter((alert) => alert.level === "warning").length
+
+  const statusColor = alerts.length > 0 ? theme.warning : theme.success
+  const statusText = alerts.length > 0 ? `${alerts.length} activa(s)` : "Sin alertas"
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div>
-          <h2 style={styles.title}>Alertas</h2>
-          <p style={styles.subtitle}>Eventos importantes detectados por Boat OS</p>
-        </div>
-
-        <div
-          style={{
-            ...styles.statusBadge,
-            backgroundColor: alerts.length > 0 ? "#3d2d12" : "#123d2a",
-            color: alerts.length > 0 ? "#ffb300" : "#4caf50",
-            borderColor: alerts.length > 0 ? "#8a5a00" : "#2d7d46",
-          }}
-        >
-          {alerts.length > 0 ? `${alerts.length} activa(s)` : "Sin alertas"}
-        </div>
-      </div>
+      <SectionHeader
+        title="Alertas"
+        subtitle="Eventos importantes detectados por Boat OS"
+        badge={
+          <StatusBadge theme={theme} color={statusColor}>
+            {statusText}
+          </StatusBadge>
+        }
+      />
 
       {alerts.length === 0 && (
         <div style={styles.emptyState}>
@@ -44,167 +45,143 @@ function Alerts({ data, loading, error }) {
       )}
 
       <div style={styles.list}>
-        {alerts.map((alert) => (
-          <div
-            key={alert.id}
-            style={{
-              ...styles.card,
-              borderLeft: `8px solid ${getAlertColor(alert.level)}`
-            }}
-          >
-            <div style={styles.cardHeader}>
-              <div>
-                <strong style={styles.cardTitle}>{alert.title}</strong>
-                <p style={styles.source}>Origen: {alert.source}</p>
+        {alerts.map((alert) => {
+          const alertColor = getAlertColor(alert.level, theme)
+
+          return (
+            <div
+              key={alert.id}
+              style={{
+                ...styles.alertCard,
+                borderLeft: `8px solid ${alertColor}`,
+              }}
+            >
+              <div style={styles.alertHeader}>
+                <div>
+                  <strong style={styles.alertTitle}>{alert.title}</strong>
+                  <p style={styles.source}>Origen: {alert.source}</p>
+                </div>
+
+                <span
+                  style={{
+                    ...styles.levelBadge,
+                    color: alertColor,
+                    borderColor: alertColor,
+                    backgroundColor: `${alertColor}22`,
+                  }}
+                >
+                  {getAlertLabel(alert.level)}
+                </span>
               </div>
 
-              <span
-                style={{
-                  ...styles.levelBadge,
-                  backgroundColor: getAlertColor(alert.level),
-                }}
-              >
-                {getAlertLabel(alert.level)}
-              </span>
+              <p style={styles.message}>{alert.message}</p>
             </div>
-
-            <p style={styles.message}>{alert.message}</p>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      <div style={styles.footerPanel}>
-        <h3 style={styles.footerTitle}>Resumen</h3>
+      <div style={styles.summaryGrid}>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Críticas"
+          value={criticalCount}
+          description="Alertas de máxima prioridad"
+        />
 
-        <div style={styles.summaryGrid}>
-          <div style={styles.summaryItem}>
-            <span>Críticas</span>
-            <strong>
-              {alerts.filter((alert) => alert.level === "critical").length}
-            </strong>
-          </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Avisos"
+          value={warningCount}
+          description="Requieren vigilancia"
+        />
 
-          <div style={styles.summaryItem}>
-            <span>Avisos</span>
-            <strong>
-              {alerts.filter((alert) => alert.level === "warning").length}
-            </strong>
-          </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Fuente"
+          value={data?.meta?.dataSource ?? "-"}
+          description="Origen de datos"
+        />
 
-          <div style={styles.summaryItem}>
-            <span>Fuente</span>
-            <strong>{data?.meta?.dataSource ?? "-"}</strong>
-          </div>
-
-          <div style={styles.summaryItem}>
-            <span>Última actualización</span>
-            <strong>
-              {data?.meta?.timestamp
-                ? new Date(data.meta.timestamp).toLocaleTimeString()
-                : "-"}
-            </strong>
-          </div>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Última actualización"
+          value={
+            data?.meta?.timestamp
+              ? new Date(data.meta.timestamp).toLocaleTimeString()
+              : "-"
+          }
+          description="Datos operativos"
+        />
       </div>
     </div>
   )
 }
 
-const styles = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-    textAlign: "left",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "20px",
-  },
-  title: {
-    margin: 0,
-    fontSize: "28px",
-    color: "white",
-  },
-  subtitle: {
-    color: "#9fb3c8",
-    marginTop: "6px",
-  },
-  statusBadge: {
-    border: "1px solid",
-    borderRadius: "999px",
-    padding: "8px 14px",
-    fontWeight: "bold",
-  },
-  emptyState: {
-    backgroundColor: "#07131d",
-    border: "1px solid #1f455f",
-    borderRadius: "14px",
-    padding: "24px",
-    color: "white",
-  },
-  list: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-  },
-  card: {
-    backgroundColor: "#07131d",
-    borderRadius: "14px",
-    padding: "18px",
-    border: "1px solid #1f455f",
-  },
-  cardHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "14px",
-  },
-  cardTitle: {
-    color: "white",
-    fontSize: "18px",
-  },
-  source: {
-    color: "#8fa8bb",
-    marginTop: "4px",
-  },
-  levelBadge: {
-    color: "#07131d",
-    fontWeight: "bold",
-    borderRadius: "999px",
-    padding: "6px 10px",
-    minWidth: "80px",
-    textAlign: "center",
-  },
-  message: {
-    marginTop: "14px",
-    color: "#d7e4ee",
-  },
-  footerPanel: {
-    backgroundColor: "#07131d",
-    border: "1px solid #1f455f",
-    borderRadius: "14px",
-    padding: "18px",
-  },
-  footerTitle: {
-    marginTop: 0,
-    color: "white",
-  },
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "14px",
-  },
-  summaryItem: {
-    backgroundColor: "#0b1d2a",
-    borderRadius: "12px",
-    padding: "14px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
+function getStyles(theme, tabletMode) {
+  return {
+    container: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "22px",
+      textAlign: "left",
+      color: theme.text,
+    },
+    emptyState: {
+      backgroundColor: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "16px",
+      padding: tabletMode ? "24px" : "20px",
+      color: theme.text,
+      boxShadow: theme.shadow,
+    },
+    list: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "14px",
+    },
+    alertCard: {
+      backgroundColor: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "16px",
+      padding: tabletMode ? "22px" : "18px",
+      boxShadow: theme.shadow,
+    },
+    alertHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: "14px",
+    },
+    alertTitle: {
+      color: theme.text,
+      fontSize: tabletMode ? "20px" : "18px",
+    },
+    source: {
+      color: theme.textMuted,
+      marginTop: "4px",
+    },
+    levelBadge: {
+      fontWeight: "bold",
+      borderRadius: "999px",
+      border: "1px solid",
+      padding: "6px 10px",
+      minWidth: "80px",
+      textAlign: "center",
+    },
+    message: {
+      marginTop: "14px",
+      color: theme.textMuted,
+    },
+    summaryGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gap: "16px",
+    },
+  }
 }
 
 export default Alerts

@@ -1,116 +1,239 @@
-function Dashboard({ data, loading, error }) {
+import { InfoCard, SectionHeader, StatusBadge } from "../components/ui"
 
-  if (loading) {
-    return <p>Cargando datos del barco...</p>
-  }
+function Dashboard({ data, loading, error, theme, tabletMode }) {
+  if (loading) return <p style={{ color: theme.text }}>Cargando dashboard...</p>
+  if (error) return <p style={{ color: theme.danger }}>Error cargando dashboard</p>
 
-  if (error) {
-    return <p>Error cargando datos del barco</p>
-  }
+  const styles = getStyles(theme, tabletMode)
+
+  const alerts = data?.alerts ?? []
+  const hasAlerts = alerts.length > 0
+  const hasAisAlert = alerts.some((alert) => alert.source === "ais")
+  const hasCriticalAlert = alerts.some((alert) => alert.level === "critical")
+
+  const dashboardStatusColor = hasCriticalAlert
+    ? theme.danger
+    : hasAlerts
+      ? theme.warning
+      : theme.success
+
+  const dashboardStatusText = hasCriticalAlert
+    ? "Alerta crítica"
+    : hasAlerts
+      ? "Avisos activos"
+      : "Sistema estable"
 
   return (
-    <div>
-      <h2>Dashboard</h2>
-        {data.alerts?.length > 0 && (
-          <div style={styles.alertPanel}>
+    <div style={styles.container}>
+      <SectionHeader
+        title="Dashboard"
+        subtitle="Resumen operativo del barco"
+        badge={
+          <StatusBadge theme={theme} color={dashboardStatusColor}>
+            {dashboardStatusText}
+          </StatusBadge>
+        }
+      />
+
+      {hasAlerts && (
+        <div style={styles.alertPanel}>
+          <div style={styles.alertPanelHeader}>
             <strong>Alertas activas</strong>
-
-            {data.alerts.map((alert) => (
-              <div
-                key={alert.id}
-                style={{
-                  ...styles.alertItem,
-                  borderLeft: `5px solid ${
-                    alert.level === "critical" ? "#ff4d4d" : "#ffb300"
-                  }`
-                }}
-              >
-                <strong>{alert.title}</strong>
-                <p>{alert.message}</p>
-              </div>
-            ))}
+            <span>{alerts.length}</span>
           </div>
-        )}
+
+          <div style={styles.alertList}>
+            {alerts.map((alert) => {
+              const alertColor =
+                alert.level === "critical" ? theme.danger : theme.warning
+
+              return (
+                <div
+                  key={alert.id}
+                  style={{
+                    ...styles.alertItem,
+                    borderLeft: `6px solid ${alertColor}`,
+                  }}
+                >
+                  <strong style={{ color: theme.text }}>{alert.title}</strong>
+                  <p style={styles.alertText}>{alert.message}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={styles.grid}>
-        <div style={styles.card}>
-          <strong>Batería</strong>
-          <p>{data.battery.voltage} V</p>
-          <p>{data.battery.percentage}%</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Batería"
+          value={`${data.battery.voltage} V`}
+          description={`${data.battery.percentage}% · ${data.battery.status}`}
+        />
 
-        <div style={styles.card}>
-          <strong>Solar</strong>
-          <p>{data.solar.power} W</p>
-          <p>{data.solar.status}</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Solar"
+          value={`${data.solar.power} W`}
+          description={data.solar.status}
+        />
 
-        <div style={styles.card}>
-          <strong>GPS</strong>
-          <p>{data.gps.status}</p>
-          <p>{data.gps.latitude}, {data.gps.longitude}</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="GPS"
+          value={data.gps.status}
+          description={`${data.gps.latitude}, ${data.gps.longitude}`}
+        />
 
-        <div style={{
-          ...styles.card,
-          border: data.alerts?.some(alert => alert.source === "ais")
-            ? "2px solid #ffb300"
-            : "none"
-        }}>
-          <strong>AIS</strong>
-          <p>{data.ais.status}</p>
-          <p>{data.ais.targets} barcos</p>
+        <div
+          style={{
+            ...styles.aisCard,
+            border: hasAisAlert
+              ? `2px solid ${theme.warning}`
+              : `1px solid ${theme.border}`,
+          }}
+        >
+          <span style={styles.label}>AIS</span>
+          <strong style={styles.value}>{data.ais.status}</strong>
+          <p style={styles.description}>{data.ais.targets} barcos</p>
 
-          {data.alerts?.some(alert => alert.source === "ais") && (
-            <p style={styles.alert}>⚠️ Alerta AIS activa</p>
+          {hasAisAlert && (
+            <p style={styles.aisAlert}>⚠️ Alerta AIS activa</p>
           )}
         </div>
 
-        <div style={styles.card}>
-          <strong>Conexión</strong>
-          <p>{data.connection.type}</p>
-          <p>{data.connection.status}</p>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Conexión"
+          value={data.connection.type}
+          description={data.connection.status}
+        />
+
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Raspberry"
+          value={`${data.raspberry.temperature} ºC`}
+          description={`CPU ${data.raspberry.cpu}% · RAM ${data.raspberry.ram}%`}
+        />
+      </div>
+
+      <div style={styles.footerPanel}>
+        <div style={styles.footerItem}>
+          <span>Fuente de datos</span>
+          <strong>{data.meta?.dataSource ?? "-"}</strong>
         </div>
 
-        <div style={styles.card}>
-          <strong>Raspberry</strong>
-          <p>{data.raspberry.temperature} ºC</p>
-          <p>CPU {data.raspberry.cpu}%</p>
+        <div style={styles.footerItem}>
+          <span>Modo</span>
+          <strong>{data.meta?.mode ?? "-"}</strong>
+        </div>
+
+        <div style={styles.footerItem}>
+          <span>Última actualización</span>
+          <strong>
+            {data.meta?.timestamp
+              ? new Date(data.meta.timestamp).toLocaleTimeString()
+              : "-"}
+          </strong>
         </div>
       </div>
     </div>
   )
 }
 
-const styles = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "16px",
-    marginTop: "20px"
-  },
-  card: {
-  backgroundColor: "#0b1d2a",
-  padding: "20px",
-  borderRadius: "12px"
-  },
-  alert: {
-    color: "#ff4d4d",
-    fontWeight: "bold"
-  },
+function getStyles(theme, tabletMode) {
+  return {
+    container: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "22px",
+      textAlign: "left",
+      color: theme.text,
+    },
     alertPanel: {
-    backgroundColor: "#07131d",
-    border: "1px solid #1f455f",
-    borderRadius: "14px",
-    padding: "18px",
-    marginBottom: "20px",
-    textAlign: "left"
-  },
-  alertItem: {
-    backgroundColor: "#0b1d2a",
-    borderRadius: "10px",
-    padding: "12px",
-    marginTop: "12px"
-  },
+      backgroundColor: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "16px",
+      padding: tabletMode ? "22px" : "18px",
+      boxShadow: theme.shadow,
+    },
+    alertPanelHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      color: theme.text,
+      marginBottom: "14px",
+    },
+    alertList: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+    },
+    alertItem: {
+      backgroundColor: theme.cardAlt,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "12px",
+      padding: "14px",
+    },
+    alertText: {
+      margin: "6px 0 0 0",
+      color: theme.textMuted,
+    },
+    grid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gap: "16px",
+    },
+    aisCard: {
+      backgroundColor: theme.card,
+      borderRadius: "16px",
+      padding: tabletMode ? "22px" : "18px",
+      minHeight: tabletMode ? "120px" : "105px",
+      boxShadow: theme.shadow,
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+    },
+    label: {
+      color: theme.textMuted,
+      fontSize: "13px",
+    },
+    value: {
+      color: theme.text,
+      fontSize: "18px",
+    },
+    description: {
+      color: theme.textMuted,
+      margin: 0,
+    },
+    aisAlert: {
+      margin: 0,
+      color: theme.warning,
+      fontWeight: "bold",
+    },
+    footerPanel: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gap: "16px",
+    },
+    footerItem: {
+      backgroundColor: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "16px",
+      padding: "16px",
+      boxShadow: theme.shadow,
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      color: theme.text,
+    },
+  }
 }
 
 export default Dashboard

@@ -20,6 +20,7 @@ def build_config():
         "dataSource": {
             "active": BOAT_OS_DATA_SOURCE,
             "signalKUrl": SIGNAL_K_URL,
+            "signalKReady": BOAT_OS_DATA_SOURCE == "signalk",
         },
         "ais": {
             "guardZoneNm": AIS_GUARD_ZONE_NM,

@@ -21,28 +21,87 @@ from services.data_provider import (
 from services.preferences_service import get_preferences
 
 
+def safe_call(callback, fallback):
+    try:
+        result = callback()
+        return result if result is not None else fallback
+    except Exception as error:
+        print(f"[Boat OS] Error en servicio: {error}")
+        return fallback
+
+
 def build_status():
     data_source = get_data_source()
 
-    ownship = get_boat_ownship()
-    raw_targets = get_boat_ais_targets()
-    power_status = get_boat_power_status()
-    raspberry_status = get_boat_raspberry_status()
-    preferences = get_preferences()
+    ownship = safe_call(get_boat_ownship, {
+        "latitude": 0,
+        "longitude": 0,
+        "speed": 0,
+        "course": 0,
+        "heading": 0,
+    })
 
-    ais_targets = build_ais_targets(ownship, raw_targets)
+    raw_targets = safe_call(get_boat_ais_targets, [])
+
+    power_status = safe_call(get_boat_power_status, {
+        "battery": {
+            "voltage": 0,
+            "percentage": 0,
+            "status": "Sin datos"
+        },
+        "solar": {
+            "power": 0,
+            "dailyYield": 0,
+            "status": "Sin datos"
+        }
+    })
+
+    raspberry_status = safe_call(get_boat_raspberry_status, {
+        "temperature": 0,
+        "cpu": 0,
+        "ram": 0,
+        "platform": "unknown",
+        "monitor": "fallback",
+    })
+
+    preferences = safe_call(get_preferences, {
+        "alerts": {
+            "soundEnabled": True,
+            "aisAlertsEnabled": True,
+            "energyAlertsEnabled": True,
+            "systemAlertsEnabled": True
+        },
+        "display": {
+            "nightMode": True,
+            "tabletMode": True
+        },
+        "navigation": {
+            "units": "nm_kn",
+            "aisView": "tactical"
+        }
+    })
+
+    try:
+        ais_targets = build_ais_targets(ownship, raw_targets)
+    except Exception as error:
+        print(f"[Boat OS] Error calculando AIS: {error}")
+        ais_targets = []
 
     high_risk_targets = [
         target for target in ais_targets
         if target["risk"] == "Alto"
     ]
 
-    alerts = build_alerts(
-        power_status["battery"],
-        raspberry_status,
-        ais_targets,
-        preferences
-    )
+    try:
+        alerts = build_alerts(
+            power_status["battery"],
+            raspberry_status,
+            ais_targets,
+            preferences
+        )
+    except Exception as error:
+        print(f"[Boat OS] Error generando alertas: {error}")
+        alerts = []
 
     return {
         "meta": {
@@ -75,6 +134,9 @@ def build_status():
         },
         "alerts": alerts,
         "preferences": preferences,
-        "connection": get_boat_connection_status(),
+        "connection": safe_call(get_boat_connection_status, {
+            "type": "offline",
+            "status": "Sin datos"
+        }),
         "raspberry": raspberry_status
     }

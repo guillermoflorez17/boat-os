@@ -28,3 +28,14 @@ BATTERY_WARNING_PERCENT = int(os.getenv("BATTERY_WARNING_PERCENT", "40"))
 # Raspberry thresholds
 RASPBERRY_TEMP_CRITICAL = int(os.getenv("RASPBERRY_TEMP_CRITICAL", "70"))
 RASPBERRY_TEMP_WARNING = int(os.getenv("RASPBERRY_TEMP_WARNING", "60"))
+
+# OpenCPN launcher
+OPENCPN_ENABLED = os.getenv("OPENCPN_ENABLED", "false").lower() == "true"
+OPENCPN_COMMAND = os.getenv("OPENCPN_COMMAND", "opencpn")
+
+SIGNAL_K_TIMEOUT = float(os.getenv("SIGNAL_K_TIMEOUT", "1.5"))
+SYSTEM_MONITOR_ENABLED = os.getenv("SYSTEM_MONITOR_ENABLED", "true").lower() == "true"
+
+# Simulator
+SIMULATION_DYNAMIC_ENABLED = os.getenv("SIMULATION_DYNAMIC_ENABLED", "true").lower() == "true"
+SIMULATION_TIME_SCALE = float(os.getenv("SIMULATION_TIME_SCALE", "20"))

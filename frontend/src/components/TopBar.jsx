@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react"
 
-function TopBar({ data, loading, error }) {
+function TopBar({
+  data,
+  loading,
+  error,
+  theme,
+  backendOnline,
+  lastSuccessfulUpdate,
+}) {
   const alarmPlayed = useRef(false)
 
   const alerts = data?.alerts ?? []
@@ -8,15 +15,18 @@ function TopBar({ data, loading, error }) {
   const warningAlerts = alerts.filter((alert) => alert.level === "warning")
 
   const hasCriticalAlert = criticalAlerts.length > 0
+  const soundEnabled = data?.preferences?.alerts?.soundEnabled ?? true
   const hasWarningAlert = warningAlerts.length > 0
   const mainAlert = criticalAlerts[0] ?? warningAlerts[0]
 
-  const lastUpdate = data?.meta?.timestamp
-    ? new Date(data.meta.timestamp).toLocaleTimeString()
-    : "-"
+  const lastUpdate = lastSuccessfulUpdate
+    ? lastSuccessfulUpdate.toLocaleTimeString()
+    : data?.meta?.timestamp
+      ? new Date(data.meta.timestamp).toLocaleTimeString()
+      : "-"
 
   useEffect(() => {
-    if (hasCriticalAlert && !alarmPlayed.current) {
+    if (hasCriticalAlert && soundEnabled && !alarmPlayed.current) {
       const audio = new Audio("/alarm.mp3")
       audio.play().catch(() => {
         console.log("El navegador bloqueó el audio automático")
@@ -27,29 +37,45 @@ function TopBar({ data, loading, error }) {
     if (!hasCriticalAlert) {
       alarmPlayed.current = false
     }
-  }, [hasCriticalAlert])
+  }, [hasCriticalAlert, soundEnabled])
 
-  if (loading) {
+  const topBarStyle = {
+    ...styles.topBar,
+    backgroundColor: theme.background,
+    color: theme.text,
+    borderBottom: `1px solid ${theme.border}`,
+  }
+
+  if (loading && !data) {
     return (
-      <div style={styles.topBar}>
+      <div style={topBarStyle}>
         <span style={styles.logo}>Boat OS</span>
         <span>Cargando sistema...</span>
       </div>
     )
   }
 
-  if (error) {
+  if (error && !data) {
     return (
-      <div style={styles.topBar}>
+      <div style={topBarStyle}>
         <span style={styles.logo}>Boat OS</span>
-        <span style={styles.error}>Sin conexión backend</span>
+        <span style={{ color: theme.danger }}>Sin conexión backend</span>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div style={topBarStyle}>
+        <span style={styles.logo}>Boat OS</span>
+        <span style={{ color: theme.warning }}>Sin datos</span>
       </div>
     )
   }
 
   return (
     <>
-      <div style={styles.topBar}>
+      <div style={topBarStyle}>
         <span style={styles.logo}>Boat OS</span>
 
         <div style={styles.status}>
@@ -60,9 +86,9 @@ function TopBar({ data, loading, error }) {
           <span
             style={
               hasCriticalAlert
-                ? styles.danger
+                ? { color: theme.danger, fontWeight: "bold" }
                 : hasWarningAlert
-                  ? styles.warning
+                  ? { color: theme.warning, fontWeight: "bold" }
                   : undefined
             }
           >
@@ -70,6 +96,16 @@ function TopBar({ data, loading, error }) {
           </span>
 
           <span>📡 AIS {data.ais.status}</span>
+
+          <span
+            style={{
+              color: backendOnline ? theme.success : theme.danger,
+              fontWeight: "bold",
+            }}
+          >
+            {backendOnline ? "Backend OK" : "Backend OFFLINE"}
+          </span>
+
           <span>📶 {data.connection.type}</span>
           <span>🧪 {data.meta?.dataSource}</span>
           <span>⏱️ {lastUpdate}</span>
@@ -81,11 +117,25 @@ function TopBar({ data, loading, error }) {
           style={{
             ...styles.alertBox,
             backgroundColor:
-              mainAlert.level === "critical" ? "#8b0000" : "#8a5a00",
+              mainAlert.level === "critical" ? theme.danger : theme.warning,
+            color: mainAlert.level === "critical" ? "white" : "#102230",
+            boxShadow: theme.shadow,
           }}
         >
           <strong>{mainAlert.title}</strong>
           <span>{mainAlert.message}</span>
+        </div>
+      )}
+
+      {!backendOnline && (
+        <div
+          style={{
+            ...styles.offlineBox,
+            backgroundColor: theme.danger,
+            boxShadow: theme.shadow,
+          }}
+        >
+          Backend sin respuesta. Mostrando últimos datos válidos.
         </div>
       )}
     </>
@@ -99,8 +149,6 @@ const styles = {
     left: 0,
     right: 0,
     height: "56px",
-    backgroundColor: "#07131d",
-    color: "white",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -108,43 +156,39 @@ const styles = {
     boxSizing: "border-box",
     zIndex: 1000,
     fontFamily: "Arial, sans-serif",
-    borderBottom: "1px solid #1f455f"
   },
   logo: {
     fontWeight: "bold",
-    fontSize: "18px"
+    fontSize: "18px",
   },
   status: {
     display: "flex",
     gap: "18px",
     fontSize: "14px",
-    alignItems: "center"
-  },
-  error: {
-    color: "#ff6b6b"
-  },
-  danger: {
-    color: "#ff4d4d",
-    fontWeight: "bold"
-  },
-  warning: {
-    color: "#ffb300",
-    fontWeight: "bold"
+    alignItems: "center",
   },
   alertBox: {
     position: "fixed",
     top: "70px",
     right: "20px",
-    color: "white",
     padding: "14px 20px",
     borderRadius: "12px",
     fontWeight: "bold",
     zIndex: 1002,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
     display: "flex",
     flexDirection: "column",
-    gap: "4px"
-  }
+    gap: "4px",
+  },
+  offlineBox: {
+    position: "fixed",
+    top: "70px",
+    left: "20px",
+    color: "white",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    fontWeight: "bold",
+    zIndex: 1002,
+  },
 }
 
 export default TopBar

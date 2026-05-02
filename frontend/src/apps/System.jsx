@@ -1,10 +1,13 @@
 import { useHealthData } from "../hooks/useHealthData"
+import { InfoCard, SectionHeader, ServiceRow, StatusBadge } from "../components/ui"
 
-function System({ data, loading, error }) {
+function System({ data, loading, error, theme, tabletMode }) {
   const { health, loadingHealth, healthError } = useHealthData()
 
-  if (loading) return <p>Cargando sistema...</p>
-  if (error) return <p>Error cargando datos del sistema</p>
+  if (loading) return <p style={{ color: theme.text }}>Cargando sistema...</p>
+  if (error) return <p style={{ color: theme.danger }}>Error cargando datos del sistema</p>
+
+  const styles = getStyles(theme)
 
   const lastStatusUpdate = data?.meta?.timestamp
     ? new Date(data.meta.timestamp).toLocaleTimeString()
@@ -14,167 +17,199 @@ function System({ data, loading, error }) {
     ? new Date(health.timestamp).toLocaleTimeString()
     : "-"
 
+  const backendOk = !healthError && health?.status === "ok"
+  const simulatorActive = health?.dataSource?.simulator
+  const signalKEnabled = health?.dataSource?.signalK?.enabled
+  const signalKConnected = health?.dataSource?.signalK?.connected
+  const signalKUrl = health?.dataSource?.signalK?.url
+  const openCpnEnabled = health?.opencpn?.enabled
+  const systemMonitorAvailable = health?.systemMonitor?.available
+  const simulatorDynamic = health?.simulator?.dynamicEnabled
+  const simulatorTimeScale = health?.simulator?.timeScale
+
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div>
-          <h2 style={styles.title}>Sistema</h2>
-          <p style={styles.subtitle}>Diagnóstico local de Boat OS</p>
-        </div>
-
-        <div style={styles.badge}>
-          {health?.status === "ok" ? "Sistema OK" : "Sin diagnóstico"}
-        </div>
-      </div>
+      <SectionHeader
+        title="Sistema"
+        subtitle="Diagnóstico local de Boat OS"
+        badge={
+          <StatusBadge
+            theme={theme}
+            color={backendOk ? theme.success : theme.danger}
+          >
+            {backendOk ? "Sistema OK" : "Error sistema"}
+          </StatusBadge>
+        }
+      />
 
       <div style={styles.grid}>
-        <div style={styles.card}>
-          <span style={styles.label}>Backend</span>
-          <strong>{health?.backend?.name ?? "Boat OS Backend"}</strong>
-          <p>{healthError ? "Sin conexión" : "Activo"}</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Backend"
+          value={health?.backend?.name ?? "Boat OS Backend"}
+          description={healthError ? "Sin conexión" : "Activo"}
+        />
 
-        <div style={styles.card}>
-          <span style={styles.label}>Fuente de datos</span>
-          <strong>{health?.dataSource?.active ?? data?.meta?.dataSource ?? "-"}</strong>
-          <p>{data?.meta?.mode ?? "-"}</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Fuente de datos"
+          value={health?.dataSource?.active ?? data?.meta?.dataSource ?? "-"}
+          description={data?.meta?.mode ?? "-"}
+        />
 
-        <div style={styles.card}>
-          <span style={styles.label}>Signal K</span>
-          <strong>
-            {health?.dataSource?.signalK?.enabled ? "Activado" : "Desactivado"}
-          </strong>
-          <p>{health?.dataSource?.signalK?.connected ? "Conectado" : "No conectado"}</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Simulador"
+          value={simulatorDynamic ? "Dinámico" : "Estático"}
+          description={`Escala x${simulatorTimeScale ?? "-"}`}
+        />
 
-        <div style={styles.card}>
-          <span style={styles.label}>Raspberry</span>
-          <strong>{data.raspberry.temperature} ºC</strong>
-          <p>CPU {data.raspberry.cpu}% · RAM {data.raspberry.ram}%</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Signal K"
+          value={
+            signalKConnected
+              ? "Conectado"
+              : signalKEnabled
+                ? "Activado"
+                : "En espera"
+          }
+          description={signalKUrl ?? "Sin URL configurada"}
+        />
 
-        <div style={styles.card}>
-          <span style={styles.label}>Último /status</span>
-          <strong>{lastStatusUpdate}</strong>
-          <p>Datos operativos</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="OpenCPN"
+          value={openCpnEnabled ? "Activado" : "Desactivado"}
+          description={health?.opencpn?.platform ?? "-"}
+        />
 
-        <div style={styles.card}>
-          <span style={styles.label}>Último /health</span>
-          <strong>{loadingHealth ? "Cargando..." : lastHealthUpdate}</strong>
-          <p>Diagnóstico backend</p>
-        </div>
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Sistema"
+          value={`${data.raspberry.temperature} ºC`}
+          description={`CPU ${data.raspberry.cpu}% · RAM ${data.raspberry.ram}% · ${data.raspberry.platform ?? "Raspberry"}`}
+        />
+
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Último /status"
+          value={lastStatusUpdate}
+          description="Datos operativos"
+        />
+
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Último /health"
+          value={loadingHealth ? "Cargando..." : lastHealthUpdate}
+          description="Diagnóstico backend"
+        />
       </div>
 
       <div style={styles.panel}>
         <h3 style={styles.panelTitle}>Estado de servicios</h3>
 
-        <div style={styles.serviceRow}>
-          <span>Backend FastAPI</span>
-          <strong style={healthError ? styles.bad : styles.ok}>
-            {healthError ? "ERROR" : "OK"}
-          </strong>
-        </div>
+        <ServiceRow
+          theme={theme}
+          label="Backend FastAPI"
+          status={healthError ? "ERROR" : "OK"}
+          color={healthError ? theme.danger : theme.success}
+        />
 
-        <div style={styles.serviceRow}>
-          <span>Simulador</span>
-          <strong style={health?.dataSource?.simulator ? styles.ok : styles.warn}>
-            {health?.dataSource?.simulator ? "ACTIVO" : "INACTIVO"}
-          </strong>
-        </div>
+        <ServiceRow
+          theme={theme}
+          label="Simulador"
+          status={
+            simulatorActive
+              ? simulatorDynamic
+                ? "ACTIVO DINÁMICO"
+                : "ACTIVO ESTÁTICO"
+              : "INACTIVO"
+          }
+          color={simulatorActive ? theme.success : theme.warning}
+        />
 
-        <div style={styles.serviceRow}>
-          <span>Signal K</span>
-          <strong style={health?.dataSource?.signalK?.connected ? styles.ok : styles.warn}>
-            {health?.dataSource?.signalK?.connected ? "CONECTADO" : "NO CONECTADO"}
-          </strong>
-        </div>
+        <ServiceRow
+          theme={theme}
+          label="Signal K conexión"
+          status={signalKConnected ? "CONECTADO" : "SIN CONEXIÓN"}
+          color={signalKConnected ? theme.success : theme.warning}
+        />
 
-        <div style={styles.serviceRow}>
-          <span>AIS engine</span>
-          <strong style={styles.ok}>OK</strong>
-        </div>
+        <ServiceRow
+          theme={theme}
+          label="Signal K como fuente"
+          status={signalKEnabled ? "ACTIVO" : "INACTIVO"}
+          color={signalKEnabled ? theme.success : theme.warning}
+        />
+
+        <ServiceRow
+          theme={theme}
+          label="OpenCPN launcher"
+          status={openCpnEnabled ? "ACTIVO" : "DESACTIVADO"}
+          color={openCpnEnabled ? theme.success : theme.warning}
+        />
+
+        <ServiceRow
+          theme={theme}
+          label="AIS engine"
+          status="OK"
+          color={theme.success}
+        />
+
+        <ServiceRow
+          theme={theme}
+          label="Preferencias locales"
+          status={data?.preferences ? "OK" : "ERROR"}
+          color={data?.preferences ? theme.success : theme.danger}
+        />
+
+        <ServiceRow
+          theme={theme}
+          label="Monitor sistema"
+          status={systemMonitorAvailable ? "ACTIVO" : "NO DISPONIBLE"}
+          color={systemMonitorAvailable ? theme.success : theme.warning}
+        />
       </div>
     </div>
   )
 }
 
-const styles = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-    textAlign: "left",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "20px",
-  },
-  title: {
-    margin: 0,
-    fontSize: "28px",
-    color: "white",
-  },
-  subtitle: {
-    color: "#9fb3c8",
-    marginTop: "6px",
-  },
-  badge: {
-    backgroundColor: "#123d2a",
-    color: "#4caf50",
-    border: "1px solid #2d7d46",
-    borderRadius: "999px",
-    padding: "8px 14px",
-    fontWeight: "bold",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "16px",
-  },
-  card: {
-    backgroundColor: "#07131d",
-    border: "1px solid #1f455f",
-    borderRadius: "14px",
-    padding: "18px",
-    minHeight: "100px",
-  },
-  label: {
-    display: "block",
-    color: "#8fa8bb",
-    fontSize: "13px",
-    marginBottom: "8px",
-  },
-  panel: {
-    backgroundColor: "#07131d",
-    border: "1px solid #1f455f",
-    borderRadius: "14px",
-    padding: "18px",
-  },
-  panelTitle: {
-    marginTop: 0,
-    marginBottom: "16px",
-    color: "white",
-  },
-  serviceRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 0",
-    borderBottom: "1px solid #123247",
-  },
-  ok: {
-    color: "#4caf50",
-  },
-  warn: {
-    color: "#ffb300",
-  },
-  bad: {
-    color: "#ff4d4d",
-  },
+function getStyles(theme) {
+  return {
+    container: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "22px",
+      textAlign: "left",
+      color: theme.text,
+    },
+    grid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gap: "16px",
+    },
+    panel: {
+      backgroundColor: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "16px",
+      padding: "18px",
+      boxShadow: theme.shadow,
+    },
+    panelTitle: {
+      marginTop: 0,
+      marginBottom: "16px",
+      color: theme.text,
+    },
+  }
 }
 
 export default System
