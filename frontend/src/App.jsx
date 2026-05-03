@@ -2,12 +2,14 @@ import { useState } from "react"
 import AIS from "./apps/AIS"
 import Alerts from "./apps/Alerts"
 import Dashboard from "./apps/Dashboard"
+import Demo from "./apps/Demo"
 import Energy from "./apps/Energy"
 import Pilot from "./apps/Pilot"
 import Plotter from "./apps/Plotter"
 import Settings from "./apps/Settings"
 import System from "./apps/System"
 import TopBar from "./components/TopBar"
+import AppErrorBoundary from "./components/AppErrorBoundary"
 import { useBoatData } from "./hooks/useBoatData"
 import { themes, getLauncherButtonStyle } from "./styles/theme"
 
@@ -19,6 +21,7 @@ function App() {
     error,
     backendOnline,
     lastSuccessfulUpdate,
+    dataAgeSeconds,
   } = useBoatData()
 
   const nightMode = data?.preferences?.display?.nightMode ?? true
@@ -26,6 +29,7 @@ function App() {
 
   const theme = nightMode ? themes.night : themes.day
   const launcherCardStyle = getLauncherButtonStyle(theme, tabletMode)
+  const isDevelopmentMode = data?.meta?.mode === "development"
 
   const sharedProps = {
     data,
@@ -33,6 +37,9 @@ function App() {
     error,
     theme,
     tabletMode,
+    backendOnline,
+    lastSuccessfulUpdate,
+    dataAgeSeconds,
   }
 
   const apps = {
@@ -44,7 +51,12 @@ function App() {
     Sistema: <System {...sharedProps} />,
     Alertas: <Alerts {...sharedProps} />,
     Ajustes: <Settings theme={theme} tabletMode={tabletMode} />,
-  }
+        ...(isDevelopmentMode
+      ? {
+          Demo: <Demo theme={theme} tabletMode={tabletMode} />,
+        }
+      : {}),
+      }
 
   const containerStyle = {
     ...styles.container,
@@ -73,14 +85,15 @@ function App() {
   if (currentApp !== "desktop") {
     return (
       <div style={containerStyle}>
-        <TopBar
-          data={data}
-          loading={loading}
-          error={error}
-          theme={theme}
-          backendOnline={backendOnline}
-          lastSuccessfulUpdate={lastSuccessfulUpdate}
-        />
+      <TopBar
+        data={data}
+        loading={loading}
+        error={error}
+        theme={theme}
+        backendOnline={backendOnline}
+        lastSuccessfulUpdate={lastSuccessfulUpdate}
+        dataAgeSeconds={dataAgeSeconds}
+      />
 
         {currentApp !== "Dashboard" && (
           <button style={navButtonStyle} onClick={() => setCurrentApp("Dashboard")}>
@@ -96,9 +109,15 @@ function App() {
 
         <h1 style={{ ...styles.title, color: theme.text }}>{currentApp}</h1>
 
-        <div style={appBoxStyle}>
-          {apps[currentApp]}
-        </div>
+      <div style={appBoxStyle}>
+        <AppErrorBoundary
+          theme={theme}
+          resetKey={currentApp}
+          onBack={() => setCurrentApp("Dashboard")}
+        >
+          {apps[currentApp] ?? apps.Dashboard}
+        </AppErrorBoundary>
+      </div>
       </div>
     )
   }
@@ -140,6 +159,16 @@ function App() {
           <button style={launcherCardStyle} onClick={() => setCurrentApp("Ajustes")}>Ajustes</button>
         </div>
       </div>
+
+      {isDevelopmentMode && (
+      <div style={styles.section}>
+        <h2 style={{ ...styles.sectionTitle, color: theme.text }}>Desarrollo</h2>
+
+        <div style={styles.grid}>
+          <button style={launcherCardStyle} onClick={() => setCurrentApp("Demo")}>Demo</button>
+        </div>
+      </div>
+    )}
     </div>
   )
 }

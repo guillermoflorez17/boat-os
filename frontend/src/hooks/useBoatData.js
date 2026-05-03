@@ -7,11 +7,23 @@ export function useBoatData(refreshTime = 2000) {
   const [error, setError] = useState(null)
   const [backendOnline, setBackendOnline] = useState(false)
   const [lastSuccessfulUpdate, setLastSuccessfulUpdate] = useState(null)
+  const [dataAgeSeconds, setDataAgeSeconds] = useState(null)
 
   const dataRef = useRef(null)
+  const lastUpdateRef = useRef(null)
 
   useEffect(() => {
     let mounted = true
+
+    const updateDataAge = () => {
+      if (!lastUpdateRef.current) {
+        setDataAgeSeconds(null)
+        return
+      }
+
+      const age = Math.round((Date.now() - lastUpdateRef.current.getTime()) / 1000)
+      setDataAgeSeconds(age)
+    }
 
     const loadData = async () => {
       try {
@@ -19,17 +31,23 @@ export function useBoatData(refreshTime = 2000) {
 
         if (!mounted) return
 
+        const now = new Date()
+
         dataRef.current = result
+        lastUpdateRef.current = now
+
         setData(result)
         setError(null)
         setBackendOnline(true)
-        setLastSuccessfulUpdate(new Date())
+        setLastSuccessfulUpdate(now)
+        setDataAgeSeconds(0)
       } catch (err) {
         console.error("Error cargando datos del barco:", err)
 
         if (!mounted) return
 
         setBackendOnline(false)
+        updateDataAge()
 
         if (!dataRef.current) {
           setError(err)
@@ -43,11 +61,13 @@ export function useBoatData(refreshTime = 2000) {
 
     loadData()
 
-    const interval = setInterval(loadData, refreshTime)
+    const dataInterval = setInterval(loadData, refreshTime)
+    const ageInterval = setInterval(updateDataAge, 1000)
 
     return () => {
       mounted = false
-      clearInterval(interval)
+      clearInterval(dataInterval)
+      clearInterval(ageInterval)
     }
   }, [refreshTime])
 
@@ -57,5 +77,6 @@ export function useBoatData(refreshTime = 2000) {
     error,
     backendOnline,
     lastSuccessfulUpdate,
+    dataAgeSeconds,
   }
 }

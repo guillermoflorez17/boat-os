@@ -48,3 +48,19 @@ export function launchOpenCpn() {
     method: "POST",
   })
 }
+
+export function getSimulatorStatus() {
+  return request("/simulator/status")
+}
+
+export function resetSimulator() {
+  return request("/simulator/reset", {
+    method: "POST",
+  })
+}
+
+export function setSimulatorScenario(scenario) {
+  return request(`/simulator/scenario/${scenario}`, {
+    method: "POST",
+  })
+}

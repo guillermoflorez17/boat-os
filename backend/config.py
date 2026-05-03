@@ -39,3 +39,8 @@ SYSTEM_MONITOR_ENABLED = os.getenv("SYSTEM_MONITOR_ENABLED", "true").lower() == 
 # Simulator
 SIMULATION_DYNAMIC_ENABLED = os.getenv("SIMULATION_DYNAMIC_ENABLED", "true").lower() == "true"
 SIMULATION_TIME_SCALE = float(os.getenv("SIMULATION_TIME_SCALE", "20"))
+SIMULATION_LOOP_MINUTES = float(os.getenv("SIMULATION_LOOP_MINUTES", "20"))
+SIMULATION_DEFAULT_SCENARIO = os.getenv("SIMULATION_DEFAULT_SCENARIO", "normal")
+
+# Boat OS runtime mode
+BOAT_OS_MODE = os.getenv("BOAT_OS_MODE", "development")

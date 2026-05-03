@@ -187,14 +187,37 @@ def build_ais_target(ownship, target):
         "tcpa": tcpa,
         "risk": risk,
         "encounter": encounter,
+        "priority": get_risk_priority(risk) + 1,
     }
-
-def build_ais_targets(ownship, raw_targets):
-    risk_priority = {
+def get_risk_priority(risk):
+    priorities = {
         "Alto": 0,
         "Medio": 1,
         "Bajo": 2,
     }
+
+    return priorities.get(risk, 3)
+
+
+def get_target_priority_score(target):
+    risk_priority = get_risk_priority(target["risk"])
+
+    cpa_is_future = target["tcpa"] > 0
+
+    return (
+        risk_priority,
+        0 if cpa_is_future else 1,
+        target["cpa"],
+        target["distance"],
+    )
+
+def build_ais_targets(ownship, raw_targets):
+    targets = [
+        build_ais_target(ownship, target)
+        for target in raw_targets
+    ]
+
+    return sorted(targets, key=get_target_priority_score)
 
     targets = [
         build_ais_target(ownship, target)
@@ -207,4 +230,74 @@ def build_ais_targets(ownship, raw_targets):
             risk_priority.get(target["risk"], 3),
             target["distance"]
         )
-    )   
+    )
+
+def summarize_target(target):
+    return {
+        "mmsi": target["mmsi"],
+        "name": target["name"],
+        "distance": target["distance"],
+        "bearing": target["bearing"],
+        "cpa": target["cpa"],
+        "tcpa": target["tcpa"],
+        "risk": target["risk"],
+        "encounter": target["encounter"],
+    }
+
+
+def build_ais_summary(ais_targets, guard_zone_nm):
+    if not ais_targets:
+        return {
+            "closestTarget": None,
+            "mostDangerousTarget": None,
+            "insideGuardZone": 0,
+            "futureCpaTargets": 0,
+            "riskCounts": {
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+            }
+        }
+
+    risk_priority = {
+        "Alto": 0,
+        "Medio": 1,
+        "Bajo": 2,
+    }
+
+    closest_target = min(
+        ais_targets,
+        key=lambda target: target["distance"]
+    )
+
+    most_dangerous_target = sorted(
+        ais_targets,
+        key=lambda target: (
+            risk_priority.get(target["risk"], 3),
+            target["cpa"],
+            abs(target["tcpa"]),
+            target["distance"],
+        )
+    )[0]
+
+    inside_guard_zone = [
+        target for target in ais_targets
+        if target["distance"] <= guard_zone_nm
+    ]
+
+    future_cpa_targets = [
+        target for target in ais_targets
+        if target["tcpa"] > 0
+    ]
+
+    return {
+        "closestTarget": summarize_target(closest_target),
+        "mostDangerousTarget": summarize_target(most_dangerous_target),
+        "insideGuardZone": len(inside_guard_zone),
+        "futureCpaTargets": len(future_cpa_targets),
+        "riskCounts": {
+            "high": len([target for target in ais_targets if target["risk"] == "Alto"]),
+            "medium": len([target for target in ais_targets if target["risk"] == "Medio"]),
+            "low": len([target for target in ais_targets if target["risk"] == "Bajo"]),
+        }
+    }

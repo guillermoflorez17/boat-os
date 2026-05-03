@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 function getRiskColor(risk, theme) {
   if (risk === "Alto") return theme.danger
   if (risk === "Medio") return theme.warning
@@ -25,6 +27,8 @@ function formatTcpa(tcpa) {
 }
 
 function AIS({ data, loading, error, theme, tabletMode }) {
+  const [selectedRangeNm, setSelectedRangeNm] = useState(6)
+
   if (loading) return <p style={{ color: theme.text }}>Cargando AIS...</p>
   if (error) return <p style={{ color: theme.danger }}>Error cargando AIS</p>
 
@@ -32,8 +36,12 @@ function AIS({ data, loading, error, theme, tabletMode }) {
 
   const ownCourse = data?.gps?.course ?? 0
   const targets = data?.ais?.nearby ?? []
-  const maxRangeNm = 6
+  const maxRangeNm = selectedRangeNm
   const guardZoneNm = data?.ais?.guardZoneNm ?? 1.5
+  const aisSummary = data?.ais?.summary
+  const visibleTargets = targets.filter((boat) => boat.distance <= maxRangeNm)
+  const outOfRangeTargets = targets.filter((boat) => boat.distance > maxRangeNm)
+  const allTargetsOutOfRange = targets.length > 0 && visibleTargets.length === 0
 
   return (
     <div style={styles.container}>
@@ -66,11 +74,81 @@ function AIS({ data, loading, error, theme, tabletMode }) {
         </div>
       </div>
 
+      {aisSummary && (
+        <div style={styles.tacticalSummary}>
+          <div style={styles.summaryCard}>
+            <span style={styles.summaryLabel}>Más cercano</span>
+            <strong>
+              {aisSummary.closestTarget ? aisSummary.closestTarget.name : "-"}
+            </strong>
+            <p style={styles.summaryText}>
+              {aisSummary.closestTarget
+                ? `${aisSummary.closestTarget.distance} NM · ${aisSummary.closestTarget.risk}`
+                : "Sin objetivos"}
+            </p>
+          </div>
+
+          <div style={styles.summaryCard}>
+            <span style={styles.summaryLabel}>Más peligroso</span>
+            <strong>
+              {aisSummary.mostDangerousTarget
+                ? aisSummary.mostDangerousTarget.name
+                : "-"}
+            </strong>
+            <p style={styles.summaryText}>
+              {aisSummary.mostDangerousTarget
+                ? `CPA ${aisSummary.mostDangerousTarget.cpa} NM · TCPA ${formatTcpa(
+                    aisSummary.mostDangerousTarget.tcpa
+                  )}`
+                : "Sin objetivos"}
+            </p>
+          </div>
+
+          <div style={styles.summaryCard}>
+            <span style={styles.summaryLabel}>Guard zone</span>
+            <strong>{aisSummary.insideGuardZone}</strong>
+            <p style={styles.summaryText}>Objetivos dentro</p>
+          </div>
+
+          <div style={styles.summaryCard}>
+            <span style={styles.summaryLabel}>CPA futuro</span>
+            <strong>{aisSummary.futureCpaTargets}</strong>
+            <p style={styles.summaryText}>Objetivos aproximándose</p>
+          </div>
+        </div>
+      )}
+      {allTargetsOutOfRange && (
+        <div style={styles.rangeWarning}>
+          <strong>Objetivos fuera de rango</strong>
+          <p>
+            Hay {outOfRangeTargets.length} objetivo(s) AIS, pero ninguno dentro de {maxRangeNm} NM.
+            Aumenta el rango para visualizarlos mejor.
+          </p>
+        </div>
+      )}
       <div style={styles.layout}>
         <div style={styles.mapCard}>
           <div style={styles.mapHeader}>
-            <strong>Vista táctica</strong>
-            <span>Rango {maxRangeNm} NM</span>
+            <strong>
+              Vista táctica · {visibleTargets.length}/{targets.length} visibles
+            </strong>
+
+            <div style={styles.rangeButtons}>
+              {[3, 6, 12, 24].map((range) => (
+                <button
+                  key={range}
+                  style={{
+                    ...styles.rangeButton,
+                    backgroundColor:
+                      selectedRangeNm === range ? theme.accent : theme.cardAlt,
+                    color: selectedRangeNm === range ? "white" : theme.text,
+                  }}
+                  onClick={() => setSelectedRangeNm(range)}
+                >
+                  {range} NM
+                </button>
+              ))}
+            </div>
           </div>
 
           <div style={styles.mapArea}>
@@ -80,8 +158,8 @@ function AIS({ data, loading, error, theme, tabletMode }) {
             <div
               style={{
                 ...styles.guardZone,
-                width: `${(guardZoneNm / maxRangeNm) * 84}%`,
-                height: `${(guardZoneNm / maxRangeNm) * 84}%`,
+                width: `${Math.min((guardZoneNm / maxRangeNm) * 84, 84)}%`,
+                height: `${Math.min((guardZoneNm / maxRangeNm) * 84, 84)}%`,
               }}
             ></div>
 
@@ -103,8 +181,13 @@ function AIS({ data, loading, error, theme, tabletMode }) {
             </div>
 
             {targets.map((boat) => {
-              const position = getTargetPosition(boat.distance, boat.bearing, maxRangeNm)
+              const position = getTargetPosition(
+                boat.distance,
+                boat.bearing,
+                maxRangeNm
+              )
               const riskColor = getRiskColor(boat.risk, theme)
+              const outOfRange = boat.distance > maxRangeNm
 
               return (
                 <div
@@ -113,6 +196,7 @@ function AIS({ data, loading, error, theme, tabletMode }) {
                     ...styles.target,
                     ...position,
                     color: riskColor,
+                    opacity: outOfRange ? 0.65 : 1,
                   }}
                   title={`${boat.name} • ${boat.distance} NM • CPA ${boat.cpa} NM`}
                 >
@@ -134,7 +218,9 @@ function AIS({ data, loading, error, theme, tabletMode }) {
 
                   <div style={styles.targetLabel}>
                     <strong>{boat.name}</strong>
-                    <span>{boat.distance} NM</span>
+                    <span>
+                      {boat.distance} NM{outOfRange ? " · fuera" : ""}
+                    </span>
                   </div>
                 </div>
               )
@@ -142,17 +228,44 @@ function AIS({ data, loading, error, theme, tabletMode }) {
           </div>
 
           <div style={styles.mapLegend}>
-            <span><span style={{ ...styles.legendDot, backgroundColor: theme.danger }}></span> Alto</span>
-            <span><span style={{ ...styles.legendDot, backgroundColor: theme.warning }}></span> Medio</span>
-            <span><span style={{ ...styles.legendDot, backgroundColor: theme.success }}></span> Bajo</span>
-            <span><span style={{ ...styles.legendDot, backgroundColor: "transparent", border: `2px solid ${theme.accent}` }}></span> Guard zone</span>
+            <span>
+              <span
+                style={{ ...styles.legendDot, backgroundColor: theme.danger }}
+              ></span>
+              Alto
+            </span>
+
+            <span>
+              <span
+                style={{ ...styles.legendDot, backgroundColor: theme.warning }}
+              ></span>
+              Medio
+            </span>
+
+            <span>
+              <span
+                style={{ ...styles.legendDot, backgroundColor: theme.success }}
+              ></span>
+              Bajo
+            </span>
+
+            <span>
+              <span
+                style={{
+                  ...styles.legendDot,
+                  backgroundColor: "transparent",
+                  border: `2px solid ${theme.accent}`,
+                }}
+              ></span>
+              Guard zone
+            </span>
           </div>
         </div>
 
         <div style={styles.listCard}>
           <div style={styles.mapHeader}>
             <strong>Objetivos</strong>
-            <span>Ordenados por prioridad</span>
+            <span>Riesgo · CPA · distancia</span>
           </div>
 
           <div style={styles.targetList}>
@@ -170,7 +283,9 @@ function AIS({ data, loading, error, theme, tabletMode }) {
                   <div style={styles.boatHeader}>
                     <div>
                       <strong style={styles.boatName}>{boat.name}</strong>
-                      <p style={styles.boatType}>{boat.type}</p>
+                      <p style={styles.boatType}>
+                        {boat.type} · Prioridad {boat.priority ?? "-"}
+                      </p>
                     </div>
 
                     <div
@@ -186,19 +301,49 @@ function AIS({ data, loading, error, theme, tabletMode }) {
 
                   <div style={styles.boatGrid}>
                     <DataItem label="MMSI" value={boat.mmsi} styles={styles} />
-                    <DataItem label="Distancia" value={`${boat.distance} NM`} styles={styles} />
-                    <DataItem label="Bearing" value={`${boat.bearing}°`} styles={styles} />
-                    <DataItem label="Rumbo" value={`${boat.course}°`} styles={styles} />
-                    <DataItem label="Velocidad" value={`${boat.speed} kn`} styles={styles} />
-                    <DataItem label="CPA" value={`${boat.cpa} NM`} styles={styles} />
-                    <DataItem label="TCPA" value={formatTcpa(boat.tcpa)} styles={styles} />
-                    <DataItem label="Encuentro" value={boat.encounter} styles={styles} />
+                    <DataItem
+                      label="Distancia"
+                      value={`${boat.distance} NM`}
+                      styles={styles}
+                    />
+                    <DataItem
+                      label="Bearing"
+                      value={`${boat.bearing}°`}
+                      styles={styles}
+                    />
+                    <DataItem
+                      label="Rumbo"
+                      value={`${boat.course}°`}
+                      styles={styles}
+                    />
+                    <DataItem
+                      label="Velocidad"
+                      value={`${boat.speed} kn`}
+                      styles={styles}
+                    />
+                    <DataItem
+                      label="CPA"
+                      value={`${boat.cpa} NM`}
+                      styles={styles}
+                    />
+                    <DataItem
+                      label="TCPA"
+                      value={formatTcpa(boat.tcpa)}
+                      styles={styles}
+                    />
+                    <DataItem
+                      label="Encuentro"
+                      value={boat.encounter}
+                      styles={styles}
+                    />
                   </div>
                 </div>
               )
             })}
 
-            {targets.length === 0 && <p style={styles.subtitle}>No hay datos AIS disponibles</p>}
+            {targets.length === 0 && (
+              <p style={styles.subtitle}>No hay datos AIS disponibles</p>
+            )}
           </div>
         </div>
       </div>
@@ -217,6 +362,14 @@ function DataItem({ label, value, styles }) {
 
 function getStyles(theme, tabletMode) {
   return {
+    rangeWarning: {
+      backgroundColor: "rgba(240, 180, 76, 0.14)",
+      border: `1px solid ${theme.warning}`,
+      borderRadius: "16px",
+      padding: tabletMode ? "18px" : "14px",
+      color: theme.text,
+      boxShadow: theme.shadow,
+    },
     container: {
       display: "flex",
       flexDirection: "column",
@@ -255,10 +408,31 @@ function getStyles(theme, tabletMode) {
       flexDirection: "column",
       gap: "6px",
       boxShadow: theme.shadow,
+      color: theme.text,
+    },
+    tacticalSummary: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gap: "16px",
+    },
+    summaryCard: {
+      backgroundColor: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "16px",
+      padding: tabletMode ? "18px" : "14px",
+      boxShadow: theme.shadow,
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
     },
     summaryLabel: {
       color: theme.textMuted,
       fontSize: "12px",
+    },
+    summaryText: {
+      color: theme.textMuted,
+      margin: 0,
+      fontSize: "13px",
     },
     layout: {
       display: "grid",
@@ -286,6 +460,19 @@ function getStyles(theme, tabletMode) {
       alignItems: "center",
       marginBottom: "16px",
       color: theme.text,
+      gap: "12px",
+    },
+    rangeButtons: {
+      display: "flex",
+      gap: "8px",
+      flexWrap: "wrap",
+    },
+    rangeButton: {
+      border: `1px solid ${theme.border}`,
+      borderRadius: "999px",
+      padding: "6px 10px",
+      fontWeight: "bold",
+      cursor: "pointer",
     },
     mapArea: {
       position: "relative",

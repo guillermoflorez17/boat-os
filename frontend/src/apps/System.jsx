@@ -1,8 +1,20 @@
+import { useState } from "react"
 import { useHealthData } from "../hooks/useHealthData"
 import { InfoCard, SectionHeader, ServiceRow, StatusBadge } from "../components/ui"
+import { resetSimulator } from "../services/api"
 
-function System({ data, loading, error, theme, tabletMode }) {
+  function System({
+    data,
+    loading,
+    error,
+    theme,
+    tabletMode,
+    backendOnline,
+    dataAgeSeconds,
+  }) {
   const { health, loadingHealth, healthError } = useHealthData()
+  const [resettingSimulator, setResettingSimulator] = useState(false)
+  const [simulatorResetResult, setSimulatorResetResult] = useState(null)
 
   if (loading) return <p style={{ color: theme.text }}>Cargando sistema...</p>
   if (error) return <p style={{ color: theme.danger }}>Error cargando datos del sistema</p>
@@ -26,6 +38,24 @@ function System({ data, loading, error, theme, tabletMode }) {
   const systemMonitorAvailable = health?.systemMonitor?.available
   const simulatorDynamic = health?.simulator?.dynamicEnabled
   const simulatorTimeScale = health?.simulator?.timeScale
+  const simulatorLoopMinutes = health?.simulator?.loopMinutes 
+
+  async function handleResetSimulator() {
+    setResettingSimulator(true)
+
+    try {
+      const result = await resetSimulator()
+      setSimulatorResetResult(result)
+    } catch (error) {
+      console.error("Error reiniciando simulador:", error)
+      setSimulatorResetResult({
+        reset: false,
+        error: "No se pudo reiniciar el simulador",
+      })
+    } finally {
+      setResettingSimulator(false)
+    }
+  }
 
   return (
     <div style={styles.container}>
@@ -64,7 +94,7 @@ function System({ data, loading, error, theme, tabletMode }) {
           tabletMode={tabletMode}
           label="Simulador"
           value={simulatorDynamic ? "Dinámico" : "Estático"}
-          description={`Escala x${simulatorTimeScale ?? "-"}`}
+          description={`Escala x${simulatorTimeScale ?? "-"} · ciclo ${simulatorLoopMinutes ?? "-"} min`}
         />
 
         <InfoCard
@@ -112,6 +142,26 @@ function System({ data, loading, error, theme, tabletMode }) {
           value={loadingHealth ? "Cargando..." : lastHealthUpdate}
           description="Diagnóstico backend"
         />
+
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Estado datos"
+          value={data?.meta?.degraded ? "Degradado" : "Normal"}
+          description={
+            data?.meta?.errors?.length
+              ? `${data.meta.errors.length} error(es) internos`
+              : "Sin errores internos"
+          }
+        />
+
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
+          label="Edad de datos"
+          value={dataAgeSeconds !== null ? `${dataAgeSeconds}s` : "-"}
+          description={backendOnline ? "Datos vivos" : "Últimos datos válidos"}
+        />
       </div>
 
       <div style={styles.panel}>
@@ -120,8 +170,8 @@ function System({ data, loading, error, theme, tabletMode }) {
         <ServiceRow
           theme={theme}
           label="Backend FastAPI"
-          status={healthError ? "ERROR" : "OK"}
-          color={healthError ? theme.danger : theme.success}
+          status={backendOnline ? "ONLINE" : "OFFLINE"}
+          color={backendOnline ? theme.success : theme.danger}
         />
 
         <ServiceRow
@@ -178,7 +228,44 @@ function System({ data, loading, error, theme, tabletMode }) {
           status={systemMonitorAvailable ? "ACTIVO" : "NO DISPONIBLE"}
           color={systemMonitorAvailable ? theme.success : theme.warning}
         />
+
+        <ServiceRow
+          theme={theme}
+          label="Estado /status"
+          status={data?.meta?.degraded ? "DEGRADADO" : "NORMAL"}
+          color={data?.meta?.degraded ? theme.warning : theme.success}
+        />
+
+        <div style={styles.simulatorActions}>
+          <button
+            style={styles.actionButton}
+            onClick={handleResetSimulator}
+            disabled={resettingSimulator}
+          >
+            {resettingSimulator ? "Reiniciando..." : "Reiniciar simulador AIS"}
+          </button>
+
+          {simulatorResetResult && (
+            <div style={styles.resultBox}>
+              {simulatorResetResult.reset
+                ? "Simulador reiniciado correctamente"
+                : "No se pudo reiniciar el simulador"}
+            </div>
+          )}
+        </div>
       </div>
+      {data?.meta?.errors?.length > 0 && (
+      <div style={styles.panel}>
+        <h3 style={styles.panelTitle}>Errores internos de /status</h3>
+
+        {data.meta.errors.map((item, index) => (
+          <div key={`${item.service}-${index}`} style={styles.errorItem}>
+            <strong>{item.service}</strong>
+            <p>{item.message}</p>
+          </div>
+        ))}
+      </div>
+    )}
     </div>
   )
 }
@@ -207,6 +294,37 @@ function getStyles(theme) {
     panelTitle: {
       marginTop: 0,
       marginBottom: "16px",
+      color: theme.text,
+    },
+    simulatorActions: {
+      marginTop: "18px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "10px",
+    },
+    actionButton: {
+      padding: "14px 18px",
+      borderRadius: "14px",
+      border: `1px solid ${theme.accent}`,
+      backgroundColor: theme.accent,
+      color: "white",
+      fontWeight: "bold",
+      cursor: "pointer",
+    },
+    resultBox: {
+      backgroundColor: theme.cardAlt,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "12px",
+      padding: "12px",
+      color: theme.text,
+    },
+    errorItem: {
+      backgroundColor: theme.cardAlt,
+      border: `1px solid ${theme.border}`,
+      borderLeft: `6px solid ${theme.warning}`,
+      borderRadius: "12px",
+      padding: "12px",
+      marginTop: "12px",
       color: theme.text,
     },
   }

@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from services.boat_simulator import (
+    get_simulator_status,
+    reset_simulation,
+    set_simulator_scenario,
+)
 from services.config_service import build_config
 from services.health_service import build_health
 from services.preferences_service import get_preferences, update_preferences
@@ -56,6 +60,19 @@ def opencpn_status():
 @app.post("/opencpn/launch")
 def opencpn_launch():
     return launch_opencpn()
+
+@app.get("/simulator/status")
+def simulator_status():
+    return get_simulator_status()
+
+
+@app.post("/simulator/reset")
+def simulator_reset():
+    return reset_simulation()
+
+@app.post("/simulator/scenario/{scenario}")
+def simulator_scenario(scenario: str):
+    return set_simulator_scenario(scenario)
 
 @app.get("/status")
 def status():

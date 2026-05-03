@@ -7,6 +7,7 @@ function TopBar({
   theme,
   backendOnline,
   lastSuccessfulUpdate,
+  dataAgeSeconds,
 }) {
   const alarmPlayed = useRef(false)
 
@@ -15,9 +16,12 @@ function TopBar({
   const warningAlerts = alerts.filter((alert) => alert.level === "warning")
 
   const hasCriticalAlert = criticalAlerts.length > 0
-  const soundEnabled = data?.preferences?.alerts?.soundEnabled ?? true
   const hasWarningAlert = warningAlerts.length > 0
+  const soundEnabled = data?.preferences?.alerts?.soundEnabled ?? true
   const mainAlert = criticalAlerts[0] ?? warningAlerts[0]
+
+  const degraded = data?.meta?.degraded ?? false
+  const staleData = dataAgeSeconds !== null && dataAgeSeconds > 10
 
   const lastUpdate = lastSuccessfulUpdate
     ? lastSuccessfulUpdate.toLocaleTimeString()
@@ -49,8 +53,8 @@ function TopBar({
   if (loading && !data) {
     return (
       <div style={topBarStyle}>
-        <span style={styles.logo}>Boat OS</span>
-        <span>Cargando sistema...</span>
+        <strong style={styles.logo}>Boat OS</strong>
+        <span style={{ color: theme.textMuted }}>Cargando sistema...</span>
       </div>
     )
   }
@@ -58,8 +62,10 @@ function TopBar({
   if (error && !data) {
     return (
       <div style={topBarStyle}>
-        <span style={styles.logo}>Boat OS</span>
-        <span style={{ color: theme.danger }}>Sin conexión backend</span>
+        <strong style={styles.logo}>Boat OS</strong>
+        <span style={{ color: theme.danger, fontWeight: "bold" }}>
+          Backend sin conexión
+        </span>
       </div>
     )
   }
@@ -67,8 +73,10 @@ function TopBar({
   if (!data) {
     return (
       <div style={topBarStyle}>
-        <span style={styles.logo}>Boat OS</span>
-        <span style={{ color: theme.warning }}>Sin datos</span>
+        <strong style={styles.logo}>Boat OS</strong>
+        <span style={{ color: theme.warning, fontWeight: "bold" }}>
+          Sin datos
+        </span>
       </div>
     )
   }
@@ -76,39 +84,64 @@ function TopBar({
   return (
     <>
       <div style={topBarStyle}>
-        <span style={styles.logo}>Boat OS</span>
+        <strong style={styles.logo}>Boat OS</strong>
 
-        <div style={styles.status}>
-          <span>🔋 {data.battery.voltage} V</span>
-          <span>☀️ {data.solar.power} W</span>
-          <span>📍 GPS {data.gps.status}</span>
+        <div style={styles.statusGroup}>
+          <StatusChip
+            theme={theme}
+            label="Bat"
+            value={`${data.battery.voltage} V`}
+          />
 
-          <span
-            style={
+          <StatusChip
+            theme={theme}
+            label="Solar"
+            value={`${data.solar.power} W`}
+          />
+
+          <StatusChip
+            theme={theme}
+            label="GPS"
+            value={data.gps.status}
+            color={data.gps.status === "OK" ? theme.success : theme.warning}
+          />
+
+          <StatusChip
+            theme={theme}
+            label="AIS"
+            value={hasCriticalAlert ? "RIESGO" : data.ais.status}
+            color={
               hasCriticalAlert
-                ? { color: theme.danger, fontWeight: "bold" }
+                ? theme.danger
                 : hasWarningAlert
-                  ? { color: theme.warning, fontWeight: "bold" }
-                  : undefined
+                  ? theme.warning
+                  : theme.success
             }
-          >
-            ⚠️ {alerts.length} alertas
-          </span>
+          />
 
-          <span>📡 AIS {data.ais.status}</span>
+          <StatusChip
+            theme={theme}
+            label="Backend"
+            value={backendOnline ? "OK" : "OFF"}
+            color={backendOnline ? theme.success : theme.danger}
+          />
 
-          <span
-            style={{
-              color: backendOnline ? theme.success : theme.danger,
-              fontWeight: "bold",
-            }}
-          >
-            {backendOnline ? "Backend OK" : "Backend OFFLINE"}
-          </span>
-
-          <span>📶 {data.connection.type}</span>
-          <span>🧪 {data.meta?.dataSource}</span>
-          <span>⏱️ {lastUpdate}</span>
+          <StatusChip
+            theme={theme}
+            label="Datos"
+            value={
+              dataAgeSeconds !== null
+                ? `${dataAgeSeconds}s`
+                : lastUpdate
+            }
+            color={
+              !backendOnline
+                ? theme.danger
+                : staleData || degraded
+                  ? theme.warning
+                  : theme.success
+            }
+          />
         </div>
       </div>
 
@@ -135,10 +168,38 @@ function TopBar({
             boxShadow: theme.shadow,
           }}
         >
-          Backend sin respuesta. Mostrando últimos datos válidos.
+          Backend offline · últimos datos {dataAgeSeconds ?? "-"}s
+        </div>
+      )}
+
+      {degraded && backendOnline && (
+        <div
+          style={{
+            ...styles.degradedBox,
+            backgroundColor: theme.warning,
+            boxShadow: theme.shadow,
+          }}
+        >
+          Datos degradados · revisar Sistema
         </div>
       )}
     </>
+  )
+}
+
+function StatusChip({ theme, label, value, color }) {
+  return (
+    <div
+      style={{
+        ...styles.chip,
+        backgroundColor: theme.card,
+        border: `1px solid ${theme.border}`,
+        color: theme.text,
+      }}
+    >
+      <span style={{ color: theme.textMuted }}>{label}</span>
+      <strong style={{ color: color ?? theme.text }}>{value}</strong>
+    </div>
   )
 }
 
@@ -148,7 +209,7 @@ const styles = {
     top: 0,
     left: 0,
     right: 0,
-    height: "56px",
+    height: "64px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -158,21 +219,31 @@ const styles = {
     fontFamily: "Arial, sans-serif",
   },
   logo: {
-    fontWeight: "bold",
-    fontSize: "18px",
+    fontSize: "20px",
+    whiteSpace: "nowrap",
   },
-  status: {
+  statusGroup: {
     display: "flex",
-    gap: "18px",
-    fontSize: "14px",
     alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
+  chip: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    borderRadius: "999px",
+    padding: "7px 11px",
+    fontSize: "13px",
+    whiteSpace: "nowrap",
   },
   alertBox: {
     position: "fixed",
-    top: "70px",
+    top: "78px",
     right: "20px",
     padding: "14px 20px",
-    borderRadius: "12px",
+    borderRadius: "14px",
     fontWeight: "bold",
     zIndex: 1002,
     display: "flex",
@@ -181,11 +252,21 @@ const styles = {
   },
   offlineBox: {
     position: "fixed",
-    top: "70px",
+    top: "78px",
     left: "20px",
     color: "white",
     padding: "12px 18px",
-    borderRadius: "12px",
+    borderRadius: "14px",
+    fontWeight: "bold",
+    zIndex: 1002,
+  },
+  degradedBox: {
+    position: "fixed",
+    top: "78px",
+    left: "20px",
+    color: "#102230",
+    padding: "12px 18px",
+    borderRadius: "14px",
     fontWeight: "bold",
     zIndex: 1002,
   },
