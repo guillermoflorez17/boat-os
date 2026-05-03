@@ -412,7 +412,7 @@ function getStyles(theme, tabletMode) {
     },
     tacticalSummary: {
       display: "grid",
-      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
       gap: "16px",
     },
     summaryCard: {
@@ -436,7 +436,7 @@ function getStyles(theme, tabletMode) {
     },
     layout: {
       display: "grid",
-      gridTemplateColumns: "1.1fr 1fr",
+      gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
       gap: "20px",
       alignItems: "start",
     },
@@ -461,6 +461,7 @@ function getStyles(theme, tabletMode) {
       marginBottom: "16px",
       color: theme.text,
       gap: "12px",
+      flexWrap: "wrap",
     },
     rangeButtons: {
       display: "flex",
@@ -653,7 +654,7 @@ function getStyles(theme, tabletMode) {
     },
     boatGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(2, 1fr)",
+      gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
       gap: "12px",
       color: theme.text,
     },

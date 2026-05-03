@@ -3,15 +3,15 @@ import { useHealthData } from "../hooks/useHealthData"
 import { InfoCard, SectionHeader, ServiceRow, StatusBadge } from "../components/ui"
 import { resetSimulator } from "../services/api"
 
-  function System({
-    data,
-    loading,
-    error,
-    theme,
-    tabletMode,
-    backendOnline,
-    dataAgeSeconds,
-  }) {
+function System({
+  data,
+  loading,
+  error,
+  theme,
+  tabletMode,
+  backendOnline,
+  dataAgeSeconds,
+}) {
   const { health, loadingHealth, healthError } = useHealthData()
   const [resettingSimulator, setResettingSimulator] = useState(false)
   const [simulatorResetResult, setSimulatorResetResult] = useState(null)
@@ -30,15 +30,19 @@ import { resetSimulator } from "../services/api"
     : "-"
 
   const backendOk = !healthError && health?.status === "ok"
+  const runtimeMode = health?.mode ?? data?.meta?.mode ?? "-"
+
   const simulatorActive = health?.dataSource?.simulator
+  const simulatorDynamic = health?.simulator?.dynamicEnabled
+  const simulatorTimeScale = health?.simulator?.timeScale
+  const simulatorLoopMinutes = health?.simulator?.loopMinutes
+
   const signalKEnabled = health?.dataSource?.signalK?.enabled
   const signalKConnected = health?.dataSource?.signalK?.connected
   const signalKUrl = health?.dataSource?.signalK?.url
+
   const openCpnEnabled = health?.opencpn?.enabled
   const systemMonitorAvailable = health?.systemMonitor?.available
-  const simulatorDynamic = health?.simulator?.dynamicEnabled
-  const simulatorTimeScale = health?.simulator?.timeScale
-  const simulatorLoopMinutes = health?.simulator?.loopMinutes 
 
   async function handleResetSimulator() {
     setResettingSimulator(true)
@@ -84,9 +88,17 @@ import { resetSimulator } from "../services/api"
         <InfoCard
           theme={theme}
           tabletMode={tabletMode}
+          label="Modo runtime"
+          value={runtimeMode}
+          description={runtimeMode === "development" ? "Demo visible" : "Modo operativo"}
+        />
+
+        <InfoCard
+          theme={theme}
+          tabletMode={tabletMode}
           label="Fuente de datos"
           value={health?.dataSource?.active ?? data?.meta?.dataSource ?? "-"}
-          description={data?.meta?.mode ?? "-"}
+          description="Origen operativo"
         />
 
         <InfoCard
@@ -159,7 +171,7 @@ import { resetSimulator } from "../services/api"
           theme={theme}
           tabletMode={tabletMode}
           label="Edad de datos"
-          value={dataAgeSeconds !== null ? `${dataAgeSeconds}s` : "-"}
+          value={dataAgeSeconds !== null && dataAgeSeconds !== undefined ? `${dataAgeSeconds}s` : "-"}
           description={backendOnline ? "Datos vivos" : "Últimos datos válidos"}
         />
       </div>
@@ -172,6 +184,13 @@ import { resetSimulator } from "../services/api"
           label="Backend FastAPI"
           status={backendOnline ? "ONLINE" : "OFFLINE"}
           color={backendOnline ? theme.success : theme.danger}
+        />
+
+        <ServiceRow
+          theme={theme}
+          label="Modo ejecución"
+          status={runtimeMode.toUpperCase()}
+          color={runtimeMode === "development" ? theme.warning : theme.success}
         />
 
         <ServiceRow
@@ -254,18 +273,19 @@ import { resetSimulator } from "../services/api"
           )}
         </div>
       </div>
-      {data?.meta?.errors?.length > 0 && (
-      <div style={styles.panel}>
-        <h3 style={styles.panelTitle}>Errores internos de /status</h3>
 
-        {data.meta.errors.map((item, index) => (
-          <div key={`${item.service}-${index}`} style={styles.errorItem}>
-            <strong>{item.service}</strong>
-            <p>{item.message}</p>
-          </div>
-        ))}
-      </div>
-    )}
+      {data?.meta?.errors?.length > 0 && (
+        <div style={styles.panel}>
+          <h3 style={styles.panelTitle}>Errores internos de /status</h3>
+
+          {data.meta.errors.map((item, index) => (
+            <div key={`${item.service}-${index}`} style={styles.errorItem}>
+              <strong>{item.service}</strong>
+              <p>{item.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -281,10 +301,10 @@ function getStyles(theme) {
     },
     grid: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
       gap: "16px",
     },
-    panel: {
+    panel: {  
       backgroundColor: theme.card,
       border: `1px solid ${theme.border}`,
       borderRadius: "16px",

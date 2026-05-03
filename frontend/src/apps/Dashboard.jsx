@@ -187,7 +187,7 @@ function getStyles(theme, tabletMode) {
     },
     grid: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
       gap: "16px",
     },
     aisCard: {
@@ -219,9 +219,9 @@ function getStyles(theme, tabletMode) {
     },
     footerPanel: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
       gap: "16px",
-    },
+    },    
     footerItem: {
       backgroundColor: theme.card,
       border: `1px solid ${theme.border}`,

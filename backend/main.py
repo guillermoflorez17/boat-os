@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from services.boat_simulator import (
     get_simulator_status,
@@ -9,10 +9,17 @@ from services.config_service import build_config
 from services.health_service import build_health
 from services.preferences_service import get_preferences, update_preferences
 from services.status_service import build_status
+from config import BOAT_OS_MODE
 from services.opencpn_service import get_opencpn_status, launch_opencpn
 
 
 app = FastAPI(title="Boat OS Backend")
+def require_development_mode():
+    if BOAT_OS_MODE != "development":
+        raise HTTPException(
+            status_code=403,
+            detail="Endpoint disponible solo en modo development"
+        )
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,10 +75,12 @@ def simulator_status():
 
 @app.post("/simulator/reset")
 def simulator_reset():
+    require_development_mode()
     return reset_simulation()
-
+    
 @app.post("/simulator/scenario/{scenario}")
 def simulator_scenario(scenario: str):
+    require_development_mode()
     return set_simulator_scenario(scenario)
 
 @app.get("/status")

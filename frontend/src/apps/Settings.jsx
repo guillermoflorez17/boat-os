@@ -186,12 +186,12 @@ function getStyles(theme, tabletMode) {
     },
     grid: {
       display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
       gap: "16px",
     },
     infoGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
       gap: "16px",
     },
     toggleCard: {

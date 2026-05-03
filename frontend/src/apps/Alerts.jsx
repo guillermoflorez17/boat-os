@@ -178,7 +178,7 @@ function getStyles(theme, tabletMode) {
     },
     summaryGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
       gap: "16px",
     },
   }

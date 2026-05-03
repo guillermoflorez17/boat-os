@@ -166,7 +166,7 @@ function getStyles(theme, tabletMode) {
     },
     mainGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
       gap: "18px",
     },
     primaryCard: {
@@ -217,7 +217,7 @@ function getStyles(theme, tabletMode) {
     },
     grid: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
       gap: "16px",
     },
     panel: {
